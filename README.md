@@ -1,8 +1,8 @@
-# 🤖 PrintSense
+# 🛡️ PrintSafe
 
 <div align="center">
 
-![PrintSense Logo](https://img.shields.io/badge/PrintSense-v4.0-667eea?style=for-the-badge&logo=arduino&logoColor=white)
+![PrintSafe Logo](https://img.shields.io/badge/PrintSafe-v4.0-667eea?style=for-the-badge&logo=arduino&logoColor=white)
 ![ESP32](https://img.shields.io/badge/ESP32--S3-Hardware-E7352C?style=for-the-badge&logo=espressif&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
@@ -40,23 +40,21 @@
 
 ## 🎯 Sobre o Projeto
 
-PrintSense é um **sistema completo de monitoramento ambiental** desenvolvido para garantir condições ideais durante processos de impressão 3D. O sistema monitora continuamente 4 parâmetros ambientais e indica visualmente se as condições estão adequadas para diferentes tipos de materiais (PLA, PETG, ABS, RESINA).
+PrintSafe é uma **estufa para monitoramento e preservação** desenvolvido para garantir condições ideais durante armazenamento de filamentos para impressão 3D. O sistema monitora continuamente 2 parâmetros ambientais indica visualmente se as condições estão adequadas para diferentes tipos de materiais (PLA, PETG, ABS, RESINA) e aciona atuadores para controlar esses parâmetros, além de monitorar suprimento.
 
-### Por que PrintSense?
+### Por que PrintSafe?
 
 - 🌡️ **Temperatura inadequada** = impressões falhas
 - 💧 **Umidade excessiva** = filamentos degradados
-- ☀️ **Luz UV** = materiais envelhecendo prematuramente
-- 🔊 **Ruído excessivo** = ambiente inadequado
 
-**PrintSense resolve todos esses problemas com monitoramento em tempo real!**
+**PrintSafe resolve todos esses problemas com monitoramento e ajuste em tempo real!**
 
 ---
 
 ## ✨ Funcionalidades
 
 ### Hardware (ESP32)
-- ✅ Monitoramento de 4 sensores em tempo real
+- ✅ Monitoramento de 3 sensores em tempo real
 - ✅ Display LCD 20x4 com informações detalhadas
 - ✅ 3 LEDs indicadores (🟢 IDEAL / 🟡 BOM / 🔴 RUIM)
 - ✅ Encoder rotativo para seleção de material
@@ -94,18 +92,18 @@ Este projeto inclui **5 aplicações completas**:
 
 ### 1. 🔧 Firmware ESP32 (C++)
 ```
-📁 PrintSense_v4_0.ino
+📁 PrintSafe_v1_0.ino
 📊 1,105 linhas de código
 💾 Persistência em SD Card
 🌐 WebServer HTTP integrado
 ```
 
 **Tecnologias:** C++, Arduino IDE, ESP32-S3
-**Funcionalidades:** Leitura de sensores, cálculo de status, API REST, logging
+**Funcionalidades:** Leitura de sensores, acionamento de atuadores, cálculo de status, API REST, logging
 
 ### 2. 🖥️ Desktop Application (C# WPF)
 ```
-📁 PrintSense.sln
+📁 PrintSafe.sln
 📊 2,000+ linhas de código
 🎨 5 abas funcionais
 🤖 Machine Learning integrado
@@ -123,7 +121,7 @@ Este projeto inclui **5 aplicações completas**:
 
 ### 3. 📱 Mobile Application (.NET MAUI)
 ```
-📁 PrintSense.Mobile.sln
+📁 PrintSafe.Mobile.sln
 📊 Arquitetura MVVM
 🌐 Multiplataforma
 📱 Android + iOS + Windows
@@ -253,7 +251,7 @@ Buscar e instalar:
 
 4. **Configurar WiFi**
 ```cpp
-// Editar linhas ~70-74 em PrintSense_v4_0.ino
+// Editar linhas ~70-74 em PrintSafe_v1_0.ino
 const char* ssid = "SEU_WIFI";
 const char* password = "SUA_SENHA";
 ```
@@ -284,13 +282,13 @@ Anotar IP exibido: ex: 192.168.1.100
 
 1. **Clonar Repositório**
 ```bash
-git clone https://github.com/seu-usuario/printsense.git
-cd printsense/Desktop
+git clone https://github.com/seu-usuario/PrintSafe.git
+cd PrintSafe/Desktop
 ```
 
 2. **Abrir Solução**
 ```
-Abrir PrintSense.sln no Visual Studio 2022
+Abrir PrintSafe.sln no Visual Studio 2022
 ```
 
 3. **Restaurar Pacotes NuGet**
@@ -328,7 +326,7 @@ dotnet workload install maui
 
 2. **Abrir Projeto**
 ```
-Abrir PrintSense.Mobile.sln
+Abrir PrintSafe.Mobile.sln
 ```
 
 3. **Selecionar Target**
@@ -461,7 +459,7 @@ Download de log específico
 ### JavaScript (Frontend Web)
 
 ```javascript
-// Buscar dados do PrintSense
+// Buscar dados do PrintSafe
 async function atualizarDados() {
     const response = await fetch('http://192.168.1.100/api/data');
     const data = await response.json();
@@ -542,7 +540,7 @@ curl -X POST http://192.168.1.100/api/config \
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      PRINTSENSE v4.0                        │
+│                      PrintSafe v1.0                        │
 │                   Arquitetura Completa                      │
 └─────────────────────────────────────────────────────────────┘
 
@@ -604,93 +602,6 @@ curl -X POST http://192.168.1.100/api/config \
 | **Emulador** | Python 3, HTML5, JavaScript |
 | **Machine Learning** | ML.NET 5.0 (FastTree) |
 
----
-
-## 🗺️ Roadmap
-
-### ✅ v4.0 (Atual)
-- [x] Firmware ESP32 completo
-- [x] Persistência em SD Card
-- [x] Desktop App com 5 abas
-- [x] Mobile App (base funcional)
-- [x] Emulador Python V6.0
-- [x] Machine Learning integrado
-
-### 🚧 v4.1 (Em Progresso)
-- [ ] Finalizar abas do Mobile App
-- [ ] Testes em hardware real
-- [ ] Calibração automática de sensores
-- [ ] Notificações push no mobile
-- [ ] Dashboard web (React/Blazor)
-
-### 📋 v5.0 (Planejado)
-- [ ] Modo multi-impressora (vários ESP32)
-- [ ] Banco de dados (histórico longo)
-- [ ] Integração WhatsApp/Telegram
-- [ ] Sistema de login
-- [ ] API pública documentada
-- [ ] PCB customizada profissional
-
-### 🔮 Futuro
-- [ ] Suporte para mais sensores (CO2, VOC)
-- [ ] Controle automatizado (relés)
-- [ ] Integração com OctoPrint
-- [ ] Análise preditiva de falhas
-- [ ] Dashboard público (cloud)
-
----
-
-## 🤝 Contribuindo
-
-Contribuições são bem-vindas! Siga os passos:
-
-1. **Fork o projeto**
-2. **Crie uma branch para sua feature** (`git checkout -b feature/AmazingFeature`)
-3. **Commit suas mudanças** (`git commit -m 'Add some AmazingFeature'`)
-4. **Push para a branch** (`git push origin feature/AmazingFeature`)
-5. **Abra um Pull Request**
-
-### Diretrizes
-
-- Siga o padrão de código existente
-- Adicione testes quando aplicável
-- Atualize a documentação
-- Descreva claramente as mudanças no PR
-
-### Áreas que Precisam de Ajuda
-
-- 📱 Desenvolvimento Mobile (MAUI)
-- 🌐 Frontend Web (React/Vue)
-- 🧪 Testes automatizados
-- 📚 Tradução da documentação
-- 🎨 Design de interface
-
----
-
-## 📊 Estatísticas do Projeto
-
-```
-📁 Total de Arquivos:        50+
-📊 Linhas de Código:         5,000+
-🔧 Firmware ESP32:           1,105 linhas
-🖥️  Desktop App:             2,000+ linhas
-📱 Mobile App:               800+ linhas
-🐍 Emuladores:               2,000+ linhas
-📚 Documentação:             3,000+ linhas
-```
-
-### Linguagens
-
-```
-C++          ███████████████░░░░░   40%
-C#           ████████████░░░░░░░░   35%
-Python       ████░░░░░░░░░░░░░░░░   10%
-HTML/CSS/JS  ████░░░░░░░░░░░░░░░░   10%
-Markdown     █░░░░░░░░░░░░░░░░░░░    5%
-```
-
----
-
 ## 📄 Licença
 
 Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
@@ -698,7 +609,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 ```
 MIT License
 
-Copyright (c) 2026 Equipe PrintSense
+Copyright (c) 2026 Equipe PrintSafe
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -712,23 +623,13 @@ furnished to do so, subject to the following conditions:
 
 ---
 
-## 📞 Contato
-
-**Equipe PrintSense PI4 - UNIVESP 2026**
-
-- 📧 Email: brunohsso1@gmail.com
-- 🌐 Website: [https://printsense.io](https://brunohss.github.io/PI5/PI-5-v4.0.html)
-- 💬 Discord: https://discord.gg/printsense
-- 📱 Twitter: [@printsense](https://twitter.com/printsense)
-
----
-
 ## 🙏 Agradecimentos
 
 - ESP32 Community
 - Arduino Team
 - Microsoft .NET Team
 - Todos os contribuidores open-source
+- Brun
 
 
 ---
@@ -738,6 +639,6 @@ furnished to do so, subject to the following conditions:
 **Desenvolvido com ❤️ pela Equipe UNIVESP**
 
 
-[⬆ Voltar ao topo](#-printsense)
+[⬆ Voltar ao topo](#-PrintSafe)
 
 </div>
