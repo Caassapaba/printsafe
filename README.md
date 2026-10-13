@@ -629,7 +629,7 @@ furnished to do so, subject to the following conditions:
 - Arduino Team
 - Microsoft .NET Team
 - Todos os contribuidores open-source
-- Brun
+- Bruno Henrique Souza Santos (ex-membro)
 
 
 ---
