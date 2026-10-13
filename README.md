@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![PrintSafe Logo](https://img.shields.io/badge/PrintSafe-v4.0-667eea?style=for-the-badge&logo=arduino&logoColor=white)
+![PrintSafe Logo](https://img.shields.io/badge/PrintSafe-v1.0-667eea?style=for-the-badge&logo=arduino&logoColor=white)
 ![ESP32](https://img.shields.io/badge/ESP32--S3-Hardware-E7352C?style=for-the-badge&logo=espressif&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 ![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
@@ -25,8 +25,6 @@
 - [Hardware](#️-hardware)
 - [Instalação](#-instalação)
   - [Firmware ESP32](#firmware-esp32)
-  - [Desktop App (WPF)](#desktop-app-wpf)
-  - [Mobile App (MAUI)](#mobile-app-maui)
   - [Emulador Python](#emulador-python)
 - [APIs REST](#-apis-rest)
 - [Exemplos de Uso](#-exemplos-de-uso)
@@ -40,12 +38,14 @@
 
 ## 🎯 Sobre o Projeto
 
-PrintSafe é uma **estufa para monitoramento e preservação** desenvolvido para garantir condições ideais durante armazenamento de filamentos para impressão 3D. O sistema monitora continuamente 2 parâmetros ambientais indica visualmente se as condições estão adequadas para diferentes tipos de materiais (PLA, PETG, ABS, RESINA) e aciona atuadores para controlar esses parâmetros, além de monitorar suprimento.
+PrintSafe é uma **estufa para monitoramento e preservação** desenvolvido para garantir condições ideais durante armazenamento de filamentos para impressão 3D. O sistema monitora continuamente 3 parâmetros ambientais indica visualmente se as condições estão adequadas para diferentes tipos de materiais (PLA, PETG, ABS, RESINA) e aciona atuadores para controlar esses parâmetros, além de monitorar suprimento.
 
 ### Por que PrintSafe?
 
 - 🌡️ **Temperatura inadequada** = impressões falhas
 - 💧 **Umidade excessiva** = filamentos degradados
+- 🕰️ **Expiração de material** = perdas por desuso
+- 📦 **Esgotamentos inesperados** = inconveniências logísticas
 
 **PrintSafe resolve todos esses problemas com monitoramento e ajuste em tempo real!**
 
@@ -63,21 +63,6 @@ PrintSafe é uma **estufa para monitoramento e preservação** desenvolvido para
 - ✅ Persistência de configurações por material
 - ✅ WiFi integrado para acesso remoto
 
-### Desktop Application (C# WPF)
-- ✅ 5 abas completas (Dashboard, Calibração, Configurações, Relatórios, Análise IA)
-- ✅ Gráficos em tempo real com LiveCharts
-- ✅ Machine Learning com ML.NET (89.3% acurácia)
-- ✅ Exportação de relatórios para Excel
-- ✅ Tema dark mode cyberpunk
-- ✅ Recomendações de ROI baseadas em ML
-
-### Mobile Application (.NET MAUI)
-- ✅ Multiplataforma (Android, iOS, Windows)
-- ✅ Interface responsiva e moderna
-- ✅ Monitoramento em tempo real
-- ✅ Notificações de status
-- ✅ 70-80% do código WPF reutilizado
-
 ### Emuladores de Desenvolvimento
 - ✅ Emulador Python V6.0 com interface web
 - ✅ Emulador HTML completo standalone
@@ -88,7 +73,7 @@ PrintSafe é uma **estufa para monitoramento e preservação** desenvolvido para
 
 ## 🎨 Aplicações Desenvolvidas
 
-Este projeto inclui **5 aplicações completas**:
+Este projeto inclui **3 aplicações completas**:
 
 ### 1. 🔧 Firmware ESP32 (C++)
 ```
@@ -101,36 +86,10 @@ Este projeto inclui **5 aplicações completas**:
 **Tecnologias:** C++, Arduino IDE, ESP32-S3
 **Funcionalidades:** Leitura de sensores, acionamento de atuadores, cálculo de status, API REST, logging
 
-### 2. 🖥️ Desktop Application (C# WPF)
-```
-📁 PrintSafe.sln
-📊 2,000+ linhas de código
-🎨 5 abas funcionais
-🤖 Machine Learning integrado
-```
-
-**Tecnologias:** C#, WPF, .NET Framework 4.8, Visual Studio 2022
-**Bibliotecas:** LiveCharts, ML.NET, EPPlus, Newtonsoft.Json
-
-#### Abas Implementadas:
-1. **Dashboard** - Monitoramento em tempo real com gráficos
-2. **Calibração** - Ajuste de offsets dos sensores
-3. **Configurações** - IP, porta, intervalo de atualização
-4. **Relatórios** - Estatísticas e exportação para Excel
-5. **Análise Inteligente** - ML.NET com previsões e ROI
-
-### 3. 📱 Mobile Application (.NET MAUI)
-```
-📁 PrintSafe.Mobile.sln
-📊 Arquitetura MVVM
-🌐 Multiplataforma
-📱 Android + iOS + Windows
-```
-
 **Tecnologias:** C#, .NET MAUI, XAML, .NET 8
 **Status:** Dashboard funcional, outras abas em desenvolvimento
 
-### 4. 🐍 Emulador Python V6.0
+### 2. 🐍 Emulador Python V6.0
 ```
 📁 emulator_server_v6.py
 📊 350 linhas de código
@@ -146,7 +105,7 @@ Este projeto inclui **5 aplicações completas**:
 - Log visual de operações
 - 100% compatível com ESP32
 
-### 5. 🌐 Emulador HTML Standalone
+### 3. 🌐 Emulador HTML Standalone
 ```
 📁 ESP32_Emulator_Complete.html
 📊 1,500 linhas de código
@@ -167,8 +126,6 @@ Este projeto inclui **5 aplicações completas**:
 |------------|------------|----------------|
 | ESP32-S3 WROOM1 | 1x | R$ 35-50 |
 | DHT22 (Temp/Umid) | 1x | R$ 25-30 |
-| LDR (Sensor de Luz) | 1x | R$ 2-5 |
-| MAX4466 (Microfone) | 1x | R$ 15-25 |
 | LCD I2C 20x4 | 1x | R$ 30-40 |
 | Encoder Rotativo EC11 | 1x | R$ 8-12 |
 | LEDs 5mm (3 cores) | 3x | R$ 1.50 |
@@ -205,11 +162,11 @@ SD D0          → GPIO 40
        │  ESP32-S3  │
        └─────┬──────┘
              │
-    ┌────────┼────────┐
-    │        │        │
-  DHT22    LDR    MAX4466
-    │        │        │
-    └────────┴────────┘
+    ┌────────┼
+    │        │       
+  DHT22    Carga   
+    │        │       
+    └────────┴
              │
     ┌────────┼────────┐
     │        │        │
@@ -268,78 +225,6 @@ Sketch → Upload (Ctrl+U)
 Ferramentas → Monitor Serial (115200 baud)
 Anotar IP exibido: ex: 192.168.1.100
 ```
-
----
-
-### Desktop App (WPF)
-
-#### Pré-requisitos
-- Windows 10/11
-- Visual Studio 2022
-- .NET Framework 4.8
-
-#### Passos
-
-1. **Clonar Repositório**
-```bash
-git clone https://github.com/seu-usuario/PrintSafe.git
-cd PrintSafe/Desktop
-```
-
-2. **Abrir Solução**
-```
-Abrir PrintSafe.sln no Visual Studio 2022
-```
-
-3. **Restaurar Pacotes NuGet**
-```
-Projeto → Gerenciar Pacotes NuGet → Restaurar
-```
-
-4. **Compilar e Executar**
-```
-Build → Compilar Solução (Ctrl+Shift+B)
-Depurar → Iniciar (F5)
-```
-
-#### Pacotes NuGet Necessários
-- EPPlus 8.5.0
-- LiveCharts.Wpf 0.9.7
-- Microsoft.ML 5.0.0
-- Newtonsoft.Json 13.0.4
-
----
-
-### Mobile App (MAUI)
-
-#### Pré-requisitos
-- Visual Studio 2022
-- .NET 8 SDK
-- Workload: .NET MAUI
-
-#### Passos
-
-1. **Instalar Workload**
-```bash
-dotnet workload install maui
-```
-
-2. **Abrir Projeto**
-```
-Abrir PrintSafe.Mobile.sln
-```
-
-3. **Selecionar Target**
-```
-Android / iOS / Windows
-```
-
-4. **Executar**
-```
-F5 (Debug)
-```
-
----
 
 ### Emulador Python
 
@@ -499,22 +384,6 @@ response = requests.post('http://192.168.1.100/api/material',
 print(response.json())
 ```
 
-### C# (Desktop/Mobile)
-
-```csharp
-using System.Net.Http;
-using Newtonsoft.Json;
-
-// Buscar dados
-var client = new HttpClient();
-var response = await client.GetAsync("http://192.168.1.100/api/data");
-var json = await response.Content.ReadAsStringAsync();
-var data = JsonConvert.DeserializeObject<SensorData>(json);
-
-Console.WriteLine($"Temperatura: {data.Temperature}°C");
-Console.WriteLine($"Status: {data.Status}");
-```
-
 ### curl
 
 ```bash
@@ -544,12 +413,12 @@ curl -X POST http://192.168.1.100/api/config \
 │                   Arquitetura Completa                      │
 └─────────────────────────────────────────────────────────────┘
 
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   DHT22     │     │     LDR     │     │  MAX4466    │
-│ Temp + Umid │     │     Luz     │     │     Som     │
-└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
-       │                   │                    │
-       └───────────────────┼────────────────────┘
+┌─────────────┐     ┌─────────────┐    
+│   DHT22     │     │   Célula    │     
+│ Temp + Umid │     │    Carga    │     
+└──────┬──────┘     └──────┬──────┘   
+       │                   │                    
+       └───────────────────┼ 
                            │
                      ┌─────▼──────┐
                      │            │
@@ -561,7 +430,7 @@ curl -X POST http://192.168.1.100/api/config \
           │                │                │
     ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐
     │ LCD 20x4  │   │  3 LEDs   │   │  SD Card  │
-    │  Display  │   │ 🟢 🟡 🔴  │   │   Logs    │
+    │  Display  │   │ 🟢 🟡 🔴 │   │   Logs    │
     └───────────┘   └───────────┘   └───────────┘
                            │
                      ┌─────▼──────┐
@@ -570,12 +439,12 @@ curl -X POST http://192.168.1.100/api/config \
                      │   HTTP:80  │
                      └─────┬──────┘
                            │
-          ┌────────────────┼────────────────┐
-          │                │                │
-    ┌─────▼─────┐   ┌─────▼─────┐   ┌─────▼─────┐
-    │Desktop App│   │Mobile App │   │   Browser │
-    │  WPF/C#   │   │ MAUI/C#   │   │   HTML    │
-    └───────────┘   └───────────┘   └───────────┘
+                           ┼
+                           │                
+                     ┌─────▼─────┐
+                     │ Browser   │
+                     │ HTML      │
+                     └───────────┘
 ```
 
 ### Fluxo de Dados
@@ -597,10 +466,7 @@ curl -X POST http://192.168.1.100/api/config \
 | **Firmware** | C++, Arduino IDE |
 | **Comunicação** | HTTP REST, JSON, WiFi |
 | **Armazenamento** | SD Card (FAT32), CSV, JSON |
-| **Desktop** | C#, WPF, .NET Framework 4.8 |
-| **Mobile** | C#, .NET MAUI, XAML, .NET 8 |
 | **Emulador** | Python 3, HTML5, JavaScript |
-| **Machine Learning** | ML.NET 5.0 (FastTree) |
 
 ## 📄 Licença
 
@@ -627,7 +493,6 @@ furnished to do so, subject to the following conditions:
 
 - ESP32 Community
 - Arduino Team
-- Microsoft .NET Team
 - Todos os contribuidores open-source
 - Bruno Henrique Souza Santos (ex-membro)
 
