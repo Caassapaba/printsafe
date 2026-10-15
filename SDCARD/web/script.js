@@ -1,698 +1,194 @@
+/* ═══════════════════════════════════════════════════════════════
+   ESTUFA INTELIGENTE — script.js
+   Funções originais (material, secagem, armazenamento, validade)
+   + Card de balança HX711
+   ═══════════════════════════════════════════════════════════════ */
+
 function getApiBase() {
-    const host = window.location.hostname;
-
-    if (host === "localhost" || host === "127.0.0.1") {
-        return "http://localhost:8080";
-    }
-
-    return "";
+  const h    = window.location.hostname;
+  const prot = window.location.protocol;
+  // Aberto direto no browser (duplo clique) ou via emulador → usa localhost:8080
+  if (prot === "file:" || h === "localhost" || h === "127.0.0.1") {
+    return "http://localhost:8080";
+  }
+  // Rodando no ESP32 → usa o próprio host
+  return "";
 }
-
 const API_BASE = getApiBase();
 
-// PrintSense - Dashboard Pro com Gráficos
-let currentMaterial = 'PLA';
-let historyChart = null;
-let tempHistory = [];
-let humHistory = [];
-let lightHistory = [];
-let soundHistory = [];
-let timeLabels = [];
-const MAX_DATA_POINTS = 30;
-
-// Configurações de materiais (ATUALIZADO COM dB)
-const materials = {
-    'PLA': { tempMin: 18, tempMax: 28, humMin: 40, humMax: 60, lightMax: 3000, soundMaxDB: 70 },
-    'PETG': { tempMin: 20, tempMax: 30, humMin: 30, humMax: 50, lightMax: 3000, soundMaxDB: 70 },
-    'ABS': { tempMin: 22, tempMax: 32, humMin: 20, humMax: 40, lightMax: 3000, soundMaxDB: 70 },
-    'RESINA': { tempMin: 20, tempMax: 25, humMin: 40, humMax: 60, lightMax: 1000, soundMaxDB: 65 }
-};
-
-// ========== INICIALIZAÇÃO DO GRÁFICO ==========
-function getChartColors() {
-    const isLight = document.body.classList.contains("light-mode");
-
-    return {
-        text: isLight ? "#000" : "#e0f7ff",
-        grid: isLight ? "rgba(0,0,0,0.15)" : "rgba(0,217,255,0.1)",
-    };
-}
+// ── Gráfico ────────────────────────────────────────────────────
+let chart;
 
 function initChart() {
-    const ctx = document.getElementById("historyChart");
-    if (!ctx) return;
+  const ctx = document.getElementById("chart").getContext("2d");
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: Array(60).fill(""),
+      datasets: [
+        { label: "Temperatura (°C)", data: Array(60).fill(0),
+          borderColor: "#00d9ff", backgroundColor: "rgba(0,217,255,.1)",
+          tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2 },
+        { label: "Umidade (%)", data: Array(60).fill(0),
+          borderColor: "#00ff88", backgroundColor: "rgba(0,255,136,.08)",
+          tension: 0.4, fill: true, pointRadius: 0, borderWidth: 2 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      plugins: { legend: { labels: { color: "#e0f7ff", font: { family: "Outfit" } } } },
+      scales: {
+        y: { ticks: { color: "#8899aa", font: { family: "JetBrains Mono", size: 10 } },
+             grid: { color: "rgba(0,217,255,.08)" } },
+        x: { display: false }
+      }
+    }
+  });
+}
 
-    const colors = getChartColors();
+// ── Polling ────────────────────────────────────────────────────
+async function fetchData() {
+  try {
+    const resp = await fetch(API_BASE + "/api/data");
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+    atualizarDashboard(data);
+    setConexao(true);
+  } catch (e) {
+    console.warn("[Estufa] Falha:", e.message);
+    setConexao(false);
+  }
+}
 
-    historyChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: timeLabels,
-            datasets: [
-                {
-                    label: 'Temperatura (°C)',
-                    data: tempHistory,
-                    borderColor: '#00d9ff',
-                    backgroundColor: 'rgba(0, 217, 255, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Umidade (%)',
-                    data: humHistory,
-                    borderColor: '#00ff88',
-                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Luz (lux/10)',
-                    data: lightHistory,
-                    borderColor: '#ffd700',
-                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: false,
-                    yAxisID: 'y1',
-                    hidden: true
-                },
-                {
-                    label: 'Som (dB)',
-                    data: soundHistory,
-                    borderColor: '#ff3366',
-                    backgroundColor: 'rgba(255, 51, 102, 0.1)',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: false,
-                    yAxisID: 'y1',
-                    hidden: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top',
-                    labels: {
-                        color: '#e0f7ff',
-                        font: {
-                            family: 'Outfit',
-                            size: 12
-                        },
-                        usePointStyle: true,
-                        padding: 15
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(10, 14, 39, 0.9)',
-                    titleColor: '#00d9ff',
-                    bodyColor: '#e0f7ff',
-                    borderColor: '#00d9ff',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    callbacks: {
-                        label: function (context) {
-                            let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed.y !== null) {
-                                // Ajustar valores divididos por 10
-                                if (label.includes('Luz')) {
-                                    label += (context.parsed.y * 10).toFixed(0) + ' lux';
-                                } else if (label.includes('Som')) {
-                                    label += (context.parsed.y * 10).toFixed(0);
-                                } else if (label.includes('Umidade')) {
-                                    label += context.parsed.y.toFixed(1) + '%';
-                                } else {
-                                    label += context.parsed.y.toFixed(1) + '°C';
-                                }
-                            }
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    grid: {
-                        color: 'rgba(0, 217, 255, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#8899aa',
-                        font: {
-                            family: 'JetBrains Mono',
-                            size: 10
-                        },
-                        maxRotation: 0,
-                        autoSkip: true,
-                        maxTicksLimit: 10
-                    }
-                },
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    grid: {
-                        color: 'rgba(0, 217, 255, 0.1)',
-                        drawBorder: false
-                    },
-                    ticks: {
-                        color: '#00d9ff',
-                        font: {
-                            family: 'JetBrains Mono',
-                            size: 11
-                        },
-                        callback: function (value) {
-                            return value + '°C / %';
-                        }
-                    },
-                    min: 0,
-                    max: 100
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    grid: {
-                        drawOnChartArea: false,
-                    },
-                    ticks: {
-                        color: '#ffd700',
-                        font: {
-                            family: 'JetBrains Mono',
-                            size: 11
-                        },
-                        callback: function (value, index, values) {
-                            // Luz está dividida por 10, Som em dB direto
-                            return value;
-                        }
-                    },
-                    min: 0,
-                    max: 500
-                }
-            },
-            animation: {
-                duration: 750,
-                easing: 'easeInOutQuart'
-            }
-        }
+function setConexao(online) {
+  const el = document.getElementById("connectionStatus");
+  if (!el) return;
+  el.textContent = online ? "● ONLINE" : "○ OFFLINE";
+  el.className   = "status-badge" + (online ? "" : " offline");
+}
+
+// ── Atualizar UI ───────────────────────────────────────────────
+function atualizarDashboard(data) {
+  setText("temp",     parseFloat(data.temp     ?? data.temperatura ?? 0).toFixed(1));
+  setText("umid",     parseFloat(data.umid     ?? data.umidade     ?? 0).toFixed(1));
+  setText("setpoint", parseFloat(data.setpoint ?? 0).toFixed(1));
+  setText("validade", data.validade ?? "--");
+
+  const matSel = document.getElementById("material");
+  if (matSel && data.materialIdx !== undefined) matSel.value = data.materialIdx;
+
+  setText("modoTexto", data.modo ?? "Armazenamento");
+  setText("btnTexto",  data.ativo ? "⏹️ DESLIGAR SISTEMA" : "🔌 LIGAR SISTEMA");
+
+  if (data.tempoRestante > 0) {
+    const h = Math.floor(data.tempoRestante / 60), m = data.tempoRestante % 60;
+    setText("tempoInfo", `Resta: ${h}h ${m}min`);
+  } else {
+    setText("tempoInfo", "Modo atual");
+  }
+
+  setIndicador("indResistencia", data.resistencia);
+  setIndicador("indVentoinha",   data.ventoinha);
+
+  if (data.historico) {
+    chart.data.datasets[0].data = data.historico.temp;
+    chart.data.datasets[1].data = data.historico.umid;
+    chart.update("none");
+  }
+
+  atualizarBalanca(data);
+}
+
+// ── Controles originais ────────────────────────────────────────
+async function toggleSistema()    { await postCmd("/api/comando", { cmd: "TOGGLE" }); }
+async function mudarModo(modo)    { await postCmd("/api/comando", { cmd: modo }); }
+async function selecionarMaterial() {
+  const idx = document.getElementById("material").value;
+  await postCmd("/api/comando", { cmd: "MATERIAL", valor: parseInt(idx) });
+}
+async function resetarValidade() {
+  if (!confirm("Deseja resetar o contador de validade?")) return;
+  await postCmd("/api/comando", { cmd: "RESET" });
+}
+
+// ── Balança ────────────────────────────────────────────────────
+function atualizarBalanca(data) {
+  if (data.pesoAtual === undefined) return;
+
+  const g   = Math.max(0, parseFloat(data.pesoAtual  ?? 0));
+  const mx  = parseFloat(data.pesoMaximo ?? 0);
+  const pct = mx > 0 ? Math.min(100, (g / mx) * 100) : 0;
+  const low = pct <= 15;
+
+  const gEl = document.getElementById("bal-gramas");
+  if (gEl) {
+    gEl.textContent = g.toFixed(0);
+    gEl.classList.toggle("low",   low && pct > 0);
+    gEl.classList.toggle("empty", pct === 0 && mx > 0);
+  }
+
+  const pEl = document.getElementById("bal-pct");
+  if (pEl) { pEl.textContent = pct.toFixed(1) + "%"; pEl.classList.toggle("low", low); }
+
+  const bEl = document.getElementById("bal-barra");
+  if (bEl) { bEl.style.width = pct.toFixed(1) + "%"; bEl.classList.toggle("low", low); }
+
+  setText("bal-max-label", mx > 0 ? mx.toFixed(0) + " g" : "--- g");
+  setText("bal-tara", parseFloat(data.tara ?? 0).toFixed(1) + " g");
+
+  const badge = document.getElementById("balanca-badge");
+  if (badge) {
+    if      (pct > 25)  { badge.textContent = "OK";      badge.className = "badge-status ok"; }
+    else if (pct > 10)  { badge.textContent = "ATENÇÃO"; badge.className = "badge-status warning"; }
+    else if (pct > 0)   { badge.textContent = "CRÍTICO"; badge.className = "badge-status error"; }
+    else if (mx > 0)    { badge.textContent = "VAZIO";   badge.className = "badge-status error"; }
+  }
+}
+
+async function balDefinirMax() {
+  const inp = document.getElementById("bal-inp-max");
+  const v   = parseFloat(inp ? inp.value : 0);
+  if (!v || v <= 0 || v > 5000) { alert("Informe um valor entre 1 e 5000 gramas."); return; }
+  const ok = await postCmd("/api/pesomax", { pesoMaximo: v });
+  if (ok && inp) inp.value = "";
+  await fetchData();
+}
+
+async function balFazerTara() {
+  if (!confirm("Coloque o CARRETEL VAZIO na balança e confirme.")) return;
+  await postCmd("/api/tara", {});
+  await fetchData();
+}
+
+// ── Helpers ────────────────────────────────────────────────────
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function setIndicador(id, ligado) {
+  const el = document.getElementById(id);
+  if (el) el.className = "indicator " + (ligado ? "on" : "off");
+}
+
+async function postCmd(rota, body) {
+  try {
+    const resp = await fetch(API_BASE + rota, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
     });
+    const data = await resp.json();
+    return !!data.success;
+  } catch (e) {
+    console.warn("[Estufa] POST falhou:", e.message);
+    return false;
+  }
 }
 
-// ========== ATUALIZAÇÃO DE DADOS ==========
-function setEl(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = value;
-}
-
-function updateData() {
-    fetch(API_BASE + "/api/data")
-        .then(response => response.json())
-        .then(data => {
-            // Atualizar valores (SOUND AGORA EM dB!)
-            const tempValue = !isNaN(data.temperature) ? data.temperature.toFixed(1) + '°C' : '--';
-            const humValue = !isNaN(data.humidity) ? data.humidity.toFixed(1) + '%' : '--';
-            const soundValue = !isNaN(data.soundDB) ? data.soundDB.toFixed(0) + ' dB' : '--';
-
-            setEl('temperature', tempValue);
-            setEl('humidity', humValue);
-            setEl('light', data.light);
-            setEl('sound', soundValue);
-
-            // Atualizar faixas ideais
-            // Atualizar faixas ideais
-            let mat;
-
-            if (data.material === "CUSTOM" && data.config) {
-                mat = data.config; // 🔥 usa config real do ESP
-            } else {
-                mat = materials[data.material] || materials['PLA'];
-            };
-
-            setEl('tempRange', `Ideal: ${mat.tempMin}-${mat.tempMax}°C`);
-            setEl('humRange', `Ideal: ${mat.humMin}-${mat.humMax}%`);
-            setEl('lightRange', `< ${mat.lightMax} lux`);
-            setEl('soundRange', `< ${mat.soundMaxDB} dB`);
-
-            // Atualizar status
-            setEl('statusTitle', data.status + ' para ' + data.material);
-            setEl('statusDetails', data.statusDetails || 'Condições ideais!');
-
-            // Atualizar timestamp
-            setEl('lastUpdate', data.timestamp);
-
-            // Sincronizar material
-            currentMaterial = data.material;
-            const selectElement = document.getElementById('materialSelect');
-            if (selectElement && selectElement.value !== data.material) {
-                selectElement.value = data.material;
-            }
-
-            // Atualizar badges
-            updateSensorBadges(data, mat);
-
-            // Atualizar card de status
-            updateStatusCard(data.status);
-
-            // Atualizar gráfico
-            updateChart(data);
-        })
-        .catch(error => {
-            console.error('Erro ao buscar dados:', error);
-            const connStatus = document.getElementById('connectionStatus');
-            if (connStatus) connStatus.textContent = '● OFFLINE';
-        });
-}
-
-function updateSensorBadges(data, mat) {
-    // Temperatura
-    const tempBadge = document.getElementById('tempBadge');
-    if (tempBadge) {
-        if (data.temperature >= mat.tempMin && data.temperature <= mat.tempMax) {
-            tempBadge.textContent = 'OK';
-            tempBadge.className = 'metric-badge ok';
-        } else if (data.temperature >= mat.tempMin - 2 && data.temperature <= mat.tempMax + 2) {
-            tempBadge.textContent = 'ATENÇÃO';
-            tempBadge.className = 'metric-badge warning';
-        } else {
-            tempBadge.textContent = 'CRÍTICO';
-            tempBadge.className = 'metric-badge error';
-        }
-    }
-
-    // Umidade
-    const humBadge = document.getElementById('humBadge');
-    if (humBadge) {
-        if (data.humidity >= mat.humMin && data.humidity <= mat.humMax) {
-            humBadge.textContent = 'OK';
-            humBadge.className = 'metric-badge ok';
-        } else if (data.humidity >= mat.humMin - 5 && data.humidity <= mat.humMax + 5) {
-            humBadge.textContent = 'ATENÇÃO';
-            humBadge.className = 'metric-badge warning';
-        } else {
-            humBadge.textContent = 'CRÍTICO';
-            humBadge.className = 'metric-badge error';
-        }
-    }
-
-    // Luz
-    const lightBadge = document.getElementById('lightBadge');
-    if (lightBadge) {
-        if (data.light <= mat.lightMax) {
-            lightBadge.textContent = 'OK';
-            lightBadge.className = 'metric-badge ok';
-        } else if (data.light <= mat.lightMax * 1.2) {
-            lightBadge.textContent = 'ALTO';
-            lightBadge.className = 'metric-badge warning';
-        } else {
-            lightBadge.textContent = 'MUITO ALTO';
-            lightBadge.className = 'metric-badge error';
-        }
-    }
-
-    // Som (ATUALIZADO PARA dB)
-    const soundBadge = document.getElementById('soundBadge');
-    if (soundBadge) {
-        if (data.soundDB <= mat.soundMaxDB) {
-            soundBadge.textContent = 'OK';
-            soundBadge.className = 'metric-badge ok';
-        } else if (data.soundDB <= mat.soundMaxDB + 5) {
-            soundBadge.textContent = 'ALTO';
-            soundBadge.className = 'metric-badge warning';
-        } else {
-            soundBadge.textContent = 'MUITO ALTO';
-            soundBadge.className = 'metric-badge error';
-        }
-    }
-}
-
-function updateStatusCard(status) {
-    const statusCard = document.getElementById('statusCard');
-    if (statusCard) {
-        statusCard.classList.remove('ideal', 'bom', 'ruim');
-
-        if (status === 'IDEAL') {
-            statusCard.classList.add('ideal');
-        } else if (status === 'BOM') {
-            statusCard.classList.add('bom');
-        } else {
-            statusCard.classList.add('ruim');
-        }
-    }
-}
-
-function updateChart(data) {
-    if (!historyChart) return;
-
-    // Adicionar timestamp
-    const now = new Date();
-    const timeLabel = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-    timeLabels.push(timeLabel);
-    tempHistory.push(data.temperature);
-    humHistory.push(data.humidity);
-    lightHistory.push(data.light / 10); // Dividir por 10 para escala
-    soundHistory.push(data.soundDB); // SOM EM dB (não dividir!)
-
-    // Manter apenas últimos pontos
-    if (timeLabels.length > MAX_DATA_POINTS) {
-        timeLabels.shift();
-        tempHistory.shift();
-        humHistory.shift();
-        lightHistory.shift();
-        soundHistory.shift();
-    }
-
-    historyChart.update('none'); // Atualização sem animação
-}
-
-// ========== FUNÇÕES DE MATERIAL ==========
-function changeMaterial() {
-    const selectElement = document.getElementById('materialSelect');
-    if (!selectElement) return;
-
-    const material = selectElement.value;
-
-    fetch(API_BASE + '/api/material', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ material })
-    })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Material alterado:", data);
-        })
-        .catch(error => {
-            console.error("Erro na requisição:", error);
-        });
-}
-
-// ========== FUNÇÕES DE LOGS ==========
-function showLogs() {
-    fetch(API_BASE + '/api/logs')
-        .then(response => response.json())
-        .then(data => {
-            if (data.logs && data.logs.length > 0) {
-                displayLogsModal(data.logs);
-            } else {
-                showNotification('Nenhum log disponível', 'info');
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao buscar logs:', error);
-            showNotification('Erro ao buscar logs', 'error');
-        });
-}
-
-function displayLogsModal(logs) {
-    let modal = document.getElementById('logsModal');
-
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'logsModal';
-        modal.className = 'modal';
-        document.body.appendChild(modal);
-    }
-
-    let logsList = '<div class="modal-content">';
-    logsList += '<span class="close-modal" onclick="closeLogsModal()">&times;</span>';
-    logsList += '<h2>📁 Logs Disponíveis</h2>';
-    logsList += '<div class="logs-list">';
-
-    logs.forEach(log => {
-        logsList += `
-      <div class="log-item">
-        <span class="log-name">📄 ${log}</span>
-        <button class="btn-download" onclick="downloadLog('${log}')">
-          ⬇️ Download
-        </button>
-      </div>
-    `;
-    });
-
-    logsList += '</div></div>';
-
-    modal.innerHTML = logsList;
-    modal.style.display = 'block';
-}
-
-function closeLogsModal() {
-    const modal = document.getElementById('logsModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-function downloadLog(filename) {
-    const url = '/api/log?file=' + encodeURIComponent(filename);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showNotification('Download iniciado: ' + filename, 'success');
-}
-
-function downloadToday() {
-    const today = new Date();
-    const filename = today.getFullYear() +
-        String(today.getMonth() + 1).padStart(2, '0') +
-        String(today.getDate()).padStart(2, '0') + '.csv';
-    downloadLog(filename);
-}
-
-// ========== NOTIFICAÇÕES ==========
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = 'notification notification-' + type;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-
-    setTimeout(() => notification.classList.add('show'), 10);
-    setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => document.body.removeChild(notification), 300);
-    }, 3000);
-}
-
-// ========== ESTILOS MODAIS ==========
-function applySavedTheme() {
-    const savedTheme = localStorage.getItem("theme");
-
-    if (savedTheme === "light") {
-        document.body.classList.add("light-mode");
-    } else {
-        document.body.classList.remove("light-mode");
-    }
-}
-
-function toggleTheme() {
-    document.body.classList.toggle("light-mode");
-
-    const isLight = document.body.classList.contains("light-mode");
-    localStorage.setItem("theme", isLight ? "light" : "dark");
-
-    if (historyChart) {
-        const colors = getChartColors();
-
-        historyChart.options.plugins.legend.labels.color = colors.text;
-        historyChart.options.scales.x.ticks.color = colors.text;
-        historyChart.options.scales.y.ticks.color = colors.text;
-        historyChart.options.scales.x.grid.color = colors.grid;
-        historyChart.options.scales.y.grid.color = colors.grid;
-
-        historyChart.update();
-    }
-}
-
-function addModalStyles() {
-    if (document.getElementById('modal-styles')) return;
-
-    const style = document.createElement('style');
-    style.id = 'modal-styles';
-    style.textContent = `
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.8);
-    }
-    
-    .modal-content {
-      background: rgba(15, 20, 45, 0.95);
-      margin: 5% auto;
-      padding: 30px;
-      border: 2px solid #00d9ff;
-      border-radius: 20px;
-      width: 80%;
-      max-width: 600px;
-      color: #e0f7ff;
-      backdrop-filter: blur(20px);
-    }
-    
-    .modal-content h2 {
-      font-family: 'Orbitron', sans-serif;
-      background: linear-gradient(135deg, #00d9ff, #00ff88);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 20px;
-    }
-    
-    .close-modal {
-      color: #8899aa;
-      float: right;
-      font-size: 35px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: color 0.3s;
-    }
-    
-    .close-modal:hover {
-      color: #00d9ff;
-    }
-    
-    .logs-list {
-      margin-top: 20px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    
-    .log-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 15px;
-      margin: 10px 0;
-      background: rgba(0, 217, 255, 0.05);
-      border: 1px solid rgba(0, 217, 255, 0.2);
-      border-radius: 12px;
-      transition: all 0.3s;
-    }
-    
-    .log-item:hover {
-      background: rgba(0, 217, 255, 0.1);
-      border-color: #00d9ff;
-      box-shadow: 5px 0 15px rgba(0, 217, 255, 0.3);
-    }
-    
-    .log-name {
-      font-family: 'JetBrains Mono', monospace;
-    }
-    
-    .btn-download {
-      padding: 8px 16px;
-      background: linear-gradient(135deg, #00d9ff, #0066ff);
-      color: #050817;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.3s;
-    }
-    
-    .btn-download:hover {
-      transform: scale(1.05);
-      box-shadow: 0 5px 15px rgba(0, 217, 255, 0.4);
-    }
-    
-    .notification {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      padding: 15px 25px;
-      border-radius: 12px;
-      color: white;
-      font-weight: bold;
-      z-index: 2000;
-      opacity: 0;
-      transform: translateY(-20px);
-      transition: all 0.3s;
-      font-family: 'Outfit', sans-serif;
-    }
-    
-    .notification.show {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    
-    .notification-success {
-      background: linear-gradient(135deg, #00ff88, #00d9ff);
-      color: #050817;
-    }
-    
-    .notification-error {
-      background: linear-gradient(135deg, #ff3366, #ff0066);
-    }
-    
-    .notification-info {
-      background: linear-gradient(135deg, #00d9ff, #0066ff);
-      color: #050817;
-    }
-
-    body.light-mode .modal-content {
-      background: white;
-      color: black;
-    }
-
-    body:not(.light-mode) .modal-content {
-      background: #0f142d;
-      color: #e0f7ff;
-    }
-
-    .log-item {
-      display: flex;
-      justify-content: space-between;
-      margin: 10px 0;
-    }
-  `;
-
-    document.head.appendChild(style);
-}
-
-// ========== INICIALIZAÇÃO ==========
-document.addEventListener('DOMContentLoaded', function () {
-    console.log('PrintSense Dashboard Pro inicializado');
-
-    const saved = localStorage.getItem("theme");
-    if (saved === "light") {
-        document.body.classList.add("light-mode");
-    }
-
-    // Polling e grafico so no index (onde os elementos existem)
-    const isIndex = !!document.getElementById('temperature');
-    if (isIndex) {
-        initChart();
-        updateData();
-        setInterval(updateData, 2000);
-        addModalStyles();
-    }
+// ── Init ───────────────────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", () => {
+  initChart();
+  fetchData();
+  setInterval(fetchData, 2000);
 });
-
-// ========== EXPORTAR FUNÇÕES ==========
-window.toggleTheme = toggleTheme;
-window.showLogs = showLogs;
-window.closeLogsModal = closeLogsModal;
-window.downloadLog = downloadLog;
-window.changeMaterial = changeMaterial;
