@@ -4,25 +4,30 @@
  *  Hardware: ESP32-S3 N16R8 (mesmo PCB do PrintSense v4.7)
  * ═══════════════════════════════════════════════════════════════
  *
- *  PINOUT:
+ *  PINOUT (ESP32-S3 N16R8):
  *  ┌─────────────────────────────────────────────────────────┐
  *  │ GPIO 17  DHT22 DATA                                     │
- *  │ GPIO  4  HX711 DOUT     (era LDR no PrintSense)        │
- *  │ GPIO  8  HX711 SCK      (era MAX4466 no PrintSense)    │
- *  │ GPIO 11  Relé Resistência (LOW liga)                    │
- *  │ GPIO 12  Relé Ventoinha   (LOW liga)                    │
- *  │ GPIO  2  LED WiFi/Status  (era LED_GREEN PrintSense)   │
- *  │ GPIO 15  LED Resistência  (era LED_YELLOW PrintSense)  │
- *  │ GPIO 16  LED Ventoinha    (era LED_RED PrintSense)     │
- *  │ GPIO 39  SDMMC CLK      (= PrintSense)                 │
- *  │ GPIO 38  SDMMC CMD      (= PrintSense)                 │
- *  │ GPIO 40  SDMMC D0       (= PrintSense)                 │
- *  │ GPIO 10  I2C SDA LCD    (= PrintSense)                 │
- *  │ GPIO 13  I2C SCL LCD    (= PrintSense)                 │
- *  │ GPIO  7  Encoder CLK    (= PrintSense)                 │
- *  │ GPIO  6  Encoder DT     (= PrintSense)                 │
- *  │ GPIO  5  Encoder SW     (= PrintSense)                 │
+ *  │ GPIO  4  HX711 DOUT                                     │
+ *  │ GPIO  8  HX711 SCK                                      │
+ *  │ GPIO 19  Relé Resistência (LOW liga)                    │
+ *  │ GPIO 20  Relé Ventoinha   (LOW liga)                    │
+ *  │ GPIO 38  LED WiFi/Status                                │
+ *  │ GPIO 39  LED Resistência                                │
+ *  │ GPIO 40  LED Ventoinha                                  │
+ *  │ GPIO 10  SD SPI CS                                      │
+ *  │ GPIO 11  SD SPI MOSI                                    │
+ *  │ GPIO 12  SD SPI SCK                                     │
+ *  │ GPIO 13  SD SPI MISO                                    │
+ *  │ GPIO 15  I2C SDA LCD                                    │
+ *  │ GPIO 16  I2C SCL LCD                                    │
+ *  │ GPIO  7  Encoder CLK                                    │
+ *  │ GPIO  6  Encoder DT                                     │
+ *  │ GPIO  5  Encoder SW                                     │
  *  └─────────────────────────────────────────────────────────┘
+ *  Pinos evitados no N16R8: GPIO 26-32 (flash/PSRAM), 33-37
+ *  (PSRAM octal) e 0/3/45/46 (strapping) — a PSRAM pode ficar
+ *  habilitada sem conflito. GPIO 19/20 são o USB nativo: com os
+ *  relés neles, grave e depure pela porta UART da placa.
  *
  *  Bibliotecas (Library Manager):
  *    - DHT sensor library      (Adafruit)
@@ -57,8 +62,8 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <PID_v1.h>
-#include "driver/sdmmc_host.h"
-#include "driver/sdmmc_defs.h"
+#include "driver/spi_common.h"
+#include "driver/sdspi_host.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
 #include <sys/stat.h>
@@ -78,21 +83,24 @@ const char* WIFI_PASSWORD = "SUA_SENHA";
 #define HX711_DOUT    4
 #define HX711_SCK     8
 
-#define RELE_RESIST  11
-#define RELE_VENT    12
+#define RELE_RESIST  19
+#define RELE_VENT    20
 #define RELE1_INV    true
 #define RELE2_INV    true
 
-#define LED_WIFI      2
-#define LED_RESIST   15
-#define LED_VENT     16
+#define LED_WIFI     38
+#define LED_RESIST   39
+#define LED_VENT     40
 
-#define SD_CLK_PIN   GPIO_NUM_39
-#define SD_CMD_PIN   GPIO_NUM_38
-#define SD_D0_PIN    GPIO_NUM_40
+// SD via SPI (FSPI / SPI2)
+#define SD_CS_PIN    GPIO_NUM_10
+#define SD_MOSI_PIN  GPIO_NUM_11
+#define SD_SCK_PIN   GPIO_NUM_12
+#define SD_MISO_PIN  GPIO_NUM_13
+#define SD_SPI_HOST  SPI2_HOST
 
-#define I2C_SDA      10
-#define I2C_SCL      13
+#define I2C_SDA      15
+#define I2C_SCL      16
 
 #define ENC_CLK       7
 #define ENC_DT        6
@@ -269,7 +277,7 @@ void cors() {
 }
 
 // ═════════════════════════════════════════════════════════════
-// SDMMC
+// SD (SPI)
 // ═════════════════════════════════════════════════════════════
 
 String mimeType(const String& p) {
@@ -281,6 +289,11 @@ String mimeType(const String& p) {
   if (p.endsWith(".png"))  return "image/png";
   if (p.endsWith(".jpg") || p.endsWith(".jpeg")) return "image/jpeg";
   if (p.endsWith(".svg"))  return "image/svg+xml";
+  if (p.endsWith(".webp")) return "image/webp";
+  if (p.endsWith(".gif"))  return "image/gif";
+  if (p.endsWith(".woff2")) return "font/woff2";
+  if (p.endsWith(".woff")) return "font/woff";
+  if (p.endsWith(".txt"))  return "text/plain; charset=utf-8";
   return "application/octet-stream";
 }
 
@@ -312,20 +325,40 @@ void serveSD(const String& uri) {
 }
 
 bool initSDCard() {
-  sdmmc_host_t host = SDMMC_HOST_DEFAULT();
-  sdmmc_slot_config_t slot = SDMMC_SLOT_CONFIG_DEFAULT();
-  slot.clk = SD_CLK_PIN; slot.cmd = SD_CMD_PIN; slot.d0 = SD_D0_PIN; slot.width = 1;
+  spi_bus_config_t bus = {};
+  bus.mosi_io_num     = SD_MOSI_PIN;
+  bus.miso_io_num     = SD_MISO_PIN;
+  bus.sclk_io_num     = SD_SCK_PIN;
+  bus.quadwp_io_num   = -1;
+  bus.quadhd_io_num   = -1;
+  bus.max_transfer_sz = 4096;
+  esp_err_t err = spi_bus_initialize(SD_SPI_HOST, &bus, SPI_DMA_CH_AUTO);
+  if (err != ESP_OK) {
+    Serial.printf("[SD-SPI] Falha no barramento: %s\n", esp_err_to_name(err));
+    sdCardAvailable = false; return false;
+  }
+
+  sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+  host.slot = SD_SPI_HOST;
+  host.max_freq_khz = 20000;   // reduza para 10000 ou 4000 se houver instabilidade
+
+  sdspi_device_config_t slot = SDSPI_DEVICE_CONFIG_DEFAULT();
+  slot.gpio_cs = SD_CS_PIN;
+  slot.host_id = SD_SPI_HOST;
+
   esp_vfs_fat_sdmmc_mount_config_t mnt = {};
   mnt.format_if_mount_failed = false; mnt.max_files = 8; mnt.allocation_unit_size = 16*1024;
-  esp_err_t err = esp_vfs_fat_sdmmc_mount("/sdcard", &host, &slot, &mnt, &sdCard);
+
+  err = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot, &mnt, &sdCard);
   if (err != ESP_OK) {
-    Serial.printf("[SDMMC] Falha: %s\n", esp_err_to_name(err));
+    Serial.printf("[SD-SPI] Falha: %s\n", esp_err_to_name(err));
+    spi_bus_free(SD_SPI_HOST);
     sdCardAvailable = false; return false;
   }
   sdCardAvailable = true;
   mkdir("/sdcard/web", 0777); mkdir("/sdcard/logs", 0777);
   uint64_t sz = (uint64_t)sdCard->csd.capacity * sdCard->csd.sector_size;
-  Serial.printf("[SDMMC] OK — %.2f GB\n", (double)sz / 1073741824.0);
+  Serial.printf("[SD-SPI] OK — %.2f GB\n", (double)sz / 1073741824.0);
   return true;
 }
 
@@ -909,7 +942,7 @@ void setup() {
   myPID.SetMode(AUTOMATIC);
   myPID.SetOutputLimits(0, 1);
 
-  // SDMMC
+  // SD (SPI)
   lcdPrint(0, 2, "Montando SD...    ", LCD_COLS);
   initSDCard();
   lcdPrint(0, 3, sdCardAvailable ? "SD: OK            " : "SD: Falha (ok)    ", LCD_COLS);
