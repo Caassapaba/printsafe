@@ -654,8 +654,40 @@ No `cmd` do Windows, escape as aspas: `curl -X POST http://localhost:8080/api/co
 - **USB nativo indisponível:** os relés ocupam os GPIO 19 e 20 (D− e D+ do USB nativo); grave e depure pela porta UART da placa.
 - **Aquecimento:** a estufa deve ser feita com materiais que suportem a temperatura máxima do perfil escolhido.
 
-## Licença e créditos
+##  Licença
 
-Defina aqui a licença do projeto (por exemplo, MIT) e adicione o arquivo `LICENSE` ao repositório.
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
 
-Este projeto usa bibliotecas de código aberto: Arduino-ESP32 (Espressif), DHT sensor library e Adafruit Unified Sensor (Adafruit), HX711 (Bogdan Necula), ArduinoJson (Benoit Blanchon), PID_v1 (Brett Beauregard), LiquidCrystal_I2C (Frank de Brabander), React e Vite.
+```
+MIT License
+
+Copyright (c) 2026 Equipe PrintSafe
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+[...]
+```
+
+## 🙏 Agradecimentos
+
+- ESP32 Community
+- Arduino Team
+- Todos os contribuidores open-source
+- [Bruno Henrique dos Santos Silva](https://github.com/brunohss) (membro honorário)
+
+
+---
+
+<div align="center">
+
+**Desenvolvido com ❤️ pela Equipe UNIVESP**
+
+
+[⬆ Voltar ao topo](#-printsafe)
+
+</div>
